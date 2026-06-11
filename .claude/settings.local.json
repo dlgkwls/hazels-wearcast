@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(grep -rn \"__fit\\\\|__render\" js/ index.html)",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(python3 /tmp/fitprobe.py \"Images in Closet/hazels_everskies_separated_assets_y2k/\" \"character_base_pajamas,dress_long_sleeve,outer_light_cardigan,outer_blazer,outer_coat,top_light_shirt\" \"20,24,28,32,36,40,44,48,52,56,60\")",
+      "Bash(node -e \"require\\('./js/character.js'\\)\")",
+      "Bash(node --check js/character.js)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(echo \"grep-exit:$?\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 /tmp/eyefind.py character_base_pajamas.png 0.0 0.25)",
+      "Bash(python3 /tmp/eyefind.py head_face_for_outerwear.png 0.0 1.0)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash([ -f \"$f.png\" ])",
+      "Bash(sips -g pixelWidth -g pixelHeight __TRACKED_VAR__.png)",
+      "Bash(awk '{print $2}')",
+      "Bash(python3 -m pip install Pillow --quiet)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"import numpy; print\\('numpy', numpy.__version__\\)\")"
+    ]
+  }
+}

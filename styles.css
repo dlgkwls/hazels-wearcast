@@ -1,0 +1,388 @@
+/* Hazel's Wearcast — Y2K cute pixel aesthetic */
+:root {
+  --pink-50: #fff5fa;
+  --pink-100: #ffe3f0;
+  --pink-200: #ffc9e1;
+  --pink-300: #ffa6cd;
+  --pink-400: #ff7fb3;
+  --pink-500: #ff4f93;
+  --rose: #d6336c;
+  --plum: #9b2f63;
+  --ink: #5a2742;
+  --mint: #bdeedd;
+  --lilac: #e6d6ff;
+  --cream: #fffaf3;
+  --shadow: rgba(214, 51, 108, .25);
+  --border: #ffb3d1;
+  --radius: 16px;
+  --font-pixel: 'Press Start 2P', 'Quicksand', system-ui, sans-serif;
+  --font-body: 'Quicksand', 'Segoe UI', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
+/* Wide props (umbrella canopy) must never make the page scroll sideways — that would
+   also throw the fixed-position pop-up off-centre. Clip any horizontal overflow. */
+body { max-width: 100%; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 10%, #fff 0 6px, transparent 7px) 0 0/46px 46px,
+    radial-gradient(circle at 60% 70%, #ffffff88 0 4px, transparent 5px) 0 0/38px 38px,
+    linear-gradient(160deg, var(--pink-100), var(--lilac) 55%, var(--mint));
+  background-attachment: fixed;
+  min-height: 100vh;
+  font-weight: 600;
+}
+
+img { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 14px clamp(10px, 3vw, 26px) 40px;
+}
+
+/* ---------- Header ---------- */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.title {
+  font-family: var(--font-pixel);
+  font-size: clamp(15px, 3.4vw, 26px);
+  color: var(--rose);
+  margin: 6px 0;
+  text-shadow: 2px 2px 0 #fff, 4px 4px 0 var(--pink-300);
+  letter-spacing: 1px;
+}
+.title span { color: var(--plum); }
+.title .cloud { -webkit-text-fill-color: initial; text-shadow: none; }
+.gear-btn {
+  font-size: 20px; background: #fff; border: 3px solid var(--border);
+  border-radius: 50%; width: 46px; height: 46px; cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow); transition: transform .1s;
+}
+.gear-btn:hover { transform: rotate(20deg) scale(1.05); }
+.gear-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); }
+
+/* ---------- Panels (shared chunky pixel card) ---------- */
+.panel, .conditions, .result, .closet-grid, .modal {
+  background: var(--cream);
+  border: 4px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 0 var(--shadow), inset 0 0 0 3px #fff;
+}
+
+/* ---------- Conditions bar ---------- */
+.conditions {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px;
+  padding: 14px 16px; margin-bottom: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 5px; position: relative; }
+.field > label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--plum);
+}
+.location-field { flex: 1 1 240px; min-width: 200px; }
+.location-row { display: flex; gap: 6px; }
+.occasion-field { flex: 1 1 280px; }
+
+input[type="text"], input[type="date"], input[type="time"] {
+  font-family: var(--font-body); font-weight: 600; font-size: 14px;
+  color: var(--ink); background: #fff;
+  border: 3px solid var(--pink-200); border-radius: 12px;
+  padding: 9px 11px; outline: none; min-width: 0;
+}
+input[type="text"] { width: 100%; }
+input:focus { border-color: var(--pink-400); box-shadow: 0 0 0 3px var(--pink-100); }
+
+.mini-btn {
+  flex: 0 0 auto; font-size: 16px; background: var(--pink-200);
+  border: 3px solid var(--pink-300); border-radius: 12px; width: 42px; cursor: pointer;
+  box-shadow: 0 3px 0 var(--shadow); transition: transform .08s;
+}
+.mini-btn:hover { background: var(--pink-300); }
+.mini-btn:active { transform: translateY(2px); box-shadow: none; }
+
+.time-row { display: flex; align-items: center; gap: 6px; }
+.time-row .dash { color: var(--plum); font-weight: 700; }
+
+.occasion-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.occ {
+  font-family: var(--font-body); font-weight: 700; font-size: 13px;
+  background: #fff; color: var(--plum);
+  border: 3px solid var(--pink-200); border-radius: 999px;
+  padding: 8px 12px; cursor: pointer; transition: all .1s;
+  box-shadow: 0 3px 0 var(--shadow);
+}
+.occ:hover { background: var(--pink-50); }
+.occ.active {
+  background: var(--pink-400); color: #fff; border-color: var(--pink-500);
+  text-shadow: 1px 1px 0 var(--rose);
+}
+.occ:active { transform: translateY(2px); box-shadow: none; }
+
+.start-btn {
+  font-family: var(--font-pixel); font-size: 13px;
+  background: linear-gradient(var(--pink-400), var(--pink-500));
+  color: #fff; border: 3px solid var(--pink-500); border-radius: 14px;
+  padding: 13px 20px; cursor: pointer; letter-spacing: 1px;
+  text-shadow: 1px 1px 0 var(--rose); box-shadow: 0 5px 0 var(--shadow);
+  transition: transform .08s; align-self: stretch;
+}
+.start-btn:hover { filter: brightness(1.05); }
+.start-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
+.start-btn.full { width: 100%; margin-top: 6px; }
+.start-btn:disabled { filter: grayscale(.5) brightness(.95); cursor: progress; }
+
+/* geocoding result dropdown */
+.geo-results {
+  position: absolute; z-index: 40; top: 100%; left: 0; right: 0; margin: 4px 0 0;
+  list-style: none; padding: 5px; background: #fff;
+  border: 3px solid var(--pink-300); border-radius: 12px;
+  box-shadow: 0 6px 16px var(--shadow); max-height: 230px; overflow: auto;
+}
+.geo-results li {
+  padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.geo-results li:hover, .geo-results li.hl { background: var(--pink-100); }
+.chosen { margin: 6px 0 0; font-size: 12px; color: var(--rose); font-weight: 700; }
+
+/* ---------- Main layout (PRD §9) ---------- */
+.main {
+  display: grid; gap: 16px;
+  grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.05fr);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+}
+
+.panel { padding: 16px; }
+.character-panel { display: flex; flex-direction: column; align-items: center; }
+
+/* Character stage: fixed aspect from the base sprite (437x1211).
+   Sized by height so the long doll always fits the viewport. */
+.character-stage {
+  position: relative; height: min(66vh, 560px); aspect-ratio: 700 / 1211;
+  width: auto; max-width: 100%; margin: 4px auto 8px;
+}
+/* The character art occupies the centre ~62% of the stage; the side margins give
+   big props (umbrella / parasol) room to extend without spilling past the panel.
+   The base and the .layers wrapper are inset to that centre region; each .layer
+   then FILLS .layers (do NOT inset the layer again, or garments get squeezed). */
+.character-stage .base,
+.character-stage .layers {
+  position: absolute; top: 0; height: 100%; left: 18.7%; width: 62.4%;
+}
+.character-stage .layer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.character-stage .base { z-index: 1; transform: translateY(0%); /* base body vertical nudge (clothes stay at their tuned positions) */ }
+.character-stage .layers { z-index: 2; pointer-events: none; }
+.character-stage .layer { transition: opacity .18s ease; }
+/* Footwear sprites are tightly-cropped (e.g. 254x284), NOT full 437x1211 canvases
+   like the other garments. The default object-fit: fill would stretch their near-
+   square shape into the tall layer box and squash them. contain preserves their
+   natural aspect; object-position seats them at the floor where the feet stand. */
+.character-stage .layer.footwear { object-fit: contain; object-position: center bottom; }
+
+/* soft glow behind the character */
+.character-panel::before {
+  content: "✨"; position: absolute; opacity: 0; }
+.character-stage::after {
+  content: ""; position: absolute; inset: -4% 14% 2%; z-index: 0;
+  background: radial-gradient(ellipse at 50% 42%, #ffffffcc, #ffe3f0aa 45%, transparent 70%);
+  border-radius: 50%;
+}
+
+/* ---------- Result panel ---------- */
+.result { width: 100%; padding: 14px 16px; margin-top: 6px; }
+.result.placeholder { text-align: center; color: var(--plum); font-size: 14px; }
+.result-title {
+  font-family: var(--font-pixel); font-size: 13px; color: var(--rose);
+  margin: 2px 0 10px; text-align: center; letter-spacing: 1px;
+}
+.weather-summary {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px;
+}
+.wchip {
+  background: var(--pink-100); border: 2px solid var(--pink-200);
+  border-radius: 999px; padding: 6px 11px; font-size: 12.5px; font-weight: 700;
+  color: var(--plum); display: inline-flex; gap: 5px; align-items: center;
+}
+.wchip b { color: var(--rose); }
+
+.item-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px;
+  grid-template-columns: 1fr 1fr; }
+.item-list li {
+  display: flex; align-items: center; gap: 8px; background: #fff;
+  border: 2px solid var(--pink-100); border-radius: 10px; padding: 5px 8px; font-size: 13px;
+}
+.item-list li .thumb { width: 30px; height: 30px; object-fit: contain; flex: 0 0 auto; }
+.item-list li .slot { font-size: 10px; color: var(--pink-400); text-transform: uppercase; display: block; letter-spacing: .4px; }
+.item-list li .nm { font-weight: 700; color: var(--ink); line-height: 1.1; }
+/* [v2] Part 6 annotation pills — same family as .wchip, just smaller. */
+.item-list li .chip {
+  display: inline-block; margin: 2px 4px 0 0; padding: 1px 7px;
+  border-radius: 999px; font-size: 10.5px; font-weight: 700; line-height: 1.5;
+}
+.chip-clo { background: var(--pink-50, #fff5fa); border: 1.5px solid var(--pink-200); color: var(--pink-400); }
+/* [v2] §5.6 per-item material improvement sub-line. */
+.item-list li .mat-note {
+  font-size: 10.5px; color: var(--plum); opacity: .85; line-height: 1.35; margin-top: 1px;
+}
+.item-list li .mat-note .clo-num { color: var(--pink-400); font-weight: 700; }
+/* [v2] §5.5 outfit-level material score — always visible. */
+.material-score {
+  margin: 8px 0 6px; padding: 7px 11px; font-size: 12.5px; color: var(--plum);
+  background: var(--lilac); border: 2px solid var(--pink-100); border-radius: 999px;
+  display: inline-block;
+}
+.material-score .worst { font-size: 10.5px; opacity: .55; margin-left: 6px; }
+/* engineering toggle off: hide the clo NUMBERS only — the score and the
+   qualitative half of material notes always show (Part 6). */
+.result.no-clo .chip-clo, .result.no-clo .clo-num { display: none; }
+
+.memo {
+  margin: 12px 0 2px; background: var(--lilac); border: 2px dashed var(--pink-300);
+  border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--plum);
+}
+.memo::before { content: "📝 "; }
+
+/* ---------- Closet panel ---------- */
+.closet-head { text-align: center; margin-bottom: 8px; }
+.closet-head h2, .closet-panel h2 {
+  font-family: var(--font-pixel); font-size: 13px; color: var(--plum);
+  margin: 2px 0 8px; letter-spacing: 1px;
+}
+.closet-art { width: 150px; max-width: 55%; height: auto; display: block; margin: 0 auto 4px;
+  filter: drop-shadow(0 4px 6px var(--shadow)); }
+.closet-grid {
+  padding: 12px; max-height: 760px; overflow: auto;
+}
+.closet-group { margin-bottom: 12px; }
+.closet-group h3 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--rose); margin: 4px 2px 8px; border-bottom: 2px dotted var(--pink-200); padding-bottom: 4px;
+}
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.tile {
+  background: #fff; border: 2px solid var(--pink-100); border-radius: 12px;
+  padding: 6px 4px 4px; text-align: center; cursor: default;
+  transition: transform .1s, box-shadow .1s; position: relative;
+}
+.tile:hover { transform: translateY(-2px); box-shadow: 0 4px 0 var(--shadow); border-color: var(--pink-300); }
+.tile img { width: 100%; height: 52px; object-fit: contain; }
+.tile .cap { font-size: 9.5px; color: var(--plum); margin-top: 2px; line-height: 1.05;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.chosen { border-color: var(--pink-500); box-shadow: 0 0 0 3px var(--pink-200); background: var(--pink-50); }
+.tile.chosen::after { content: "✓"; position: absolute; top: 2px; right: 5px; color: var(--pink-500); font-weight: 800; font-size: 12px; }
+
+/* ---------- Closet coordinate mode ---------- */
+.closet-mode { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: -2px 12px 8px; }
+.coord-hint { font-size: 11.5px; color: var(--plum); font-weight: 700; }
+.coord-btn {
+  font-family: var(--font-body); font-size: 11.5px; font-weight: 800; color: var(--rose);
+  background: #fff; border: 2px solid var(--pink-200); border-radius: 999px; padding: 4px 13px;
+  cursor: pointer; box-shadow: 0 2px 0 var(--shadow); white-space: nowrap;
+}
+.coord-btn:hover { background: var(--pink-50); border-color: var(--pink-400); }
+.coord-btn:active { transform: translateY(1px); box-shadow: none; }
+/* tappable only while coordinating; otherwise the wardrobe is just a display */
+#closet.coordinating .tile { cursor: pointer; }
+#closet:not(.coordinating) .tile:hover { transform: none; box-shadow: none; border-color: var(--pink-100); }
+
+/* ---------- Flight animation ---------- */
+.flight-layer { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
+.flier { position: fixed; object-fit: contain; filter: drop-shadow(0 4px 6px var(--shadow)); }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between;
+  font-size: 12px; color: var(--plum); font-weight: 700;
+}
+.site-footer a { color: var(--rose); }
+.attribution { background: #ffffffaa; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--pink-100); }
+
+/* ---------- Settings modal ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(155, 47, 99, .35);
+  display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+}
+.modal { max-width: 440px; width: 100%; padding: 18px 20px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; }
+.modal-head h2 { font-family: var(--font-pixel); font-size: 14px; color: var(--rose); }
+.setting-block { margin: 14px 0; }
+.setting-block h3 { font-size: 14px; color: var(--plum); margin: 0 0 4px; }
+.soon { font-size: 10px; background: var(--mint); color: #2c7a5e; padding: 2px 7px; border-radius: 999px; vertical-align: middle; }
+.hint { font-size: 12px; color: var(--ink); opacity: .8; margin: 0 0 8px; }
+.radio-row { display: flex; flex-direction: column; gap: 8px; }
+.radio-row label {
+  display: flex; align-items: center; gap: 8px; background: #fff; border: 3px solid var(--pink-100);
+  border-radius: 12px; padding: 10px 12px; cursor: pointer; font-weight: 700; font-size: 14px;
+}
+.radio-row label:has(input:checked) { border-color: var(--pink-400); background: var(--pink-50); }
+/* [v2] Part 6 footer clo explainer — always visible. */
+.site-footer .clo-note { display: block; font-size: 10.5px; opacity: .6; margin-top: 2px; }
+/* [v2] settings checkbox row — same card look as the radio rows. */
+.check-row {
+  display: flex; align-items: center; gap: 8px; background: #fff; border: 3px solid var(--pink-100);
+  border-radius: 12px; padding: 10px 12px; cursor: pointer; font-weight: 700; font-size: 14px;
+}
+.check-row:has(input:checked) { border-color: var(--pink-400); background: var(--pink-50); }
+.face-slot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #f6eef4; border: 3px dashed var(--pink-200); border-radius: 12px;
+  padding: 12px; color: var(--plum); opacity: .7; font-size: 13px;
+}
+
+/* ---------- Pop-up (weather alerts + sleep mode) ---------- */
+.popup {
+  position: relative;
+  width: 100%; max-width: min(384px, calc(100vw - 28px));
+  max-height: 88vh; overflow-y: auto;
+  text-align: center; padding: 24px 22px 18px;
+  animation: popIn .22s cubic-bezier(.34,1.5,.5,1);
+}
+.popup-x {
+  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 2px solid var(--border); border-radius: 50%;
+  color: var(--rose); font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 0 var(--shadow); z-index: 2;
+}
+.popup-x:hover { background: var(--pink-50); transform: scale(1.08); }
+.popup-x:active { transform: translateY(1px); box-shadow: none; }
+@keyframes popIn { from { transform: scale(.86); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.popup-emoji { font-size: 44px; line-height: 1; margin-bottom: 4px; }
+.popup-title { font-family: var(--font-pixel); font-size: 15px; color: var(--rose); margin: 0 0 13px; text-shadow: 1px 1px 0 #fff; }
+.popup-body { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.popup-body .cond {
+  display: flex; align-items: flex-start; gap: 9px; text-align: left;
+  background: var(--pink-50); border: 2px solid var(--pink-100); border-radius: 12px;
+  padding: 9px 11px; font-weight: 600; font-size: 13.5px; color: var(--ink);
+}
+.popup-body .cond > span:first-child { font-size: 18px; line-height: 1.15; flex: 0 0 auto; }
+.popup-body .cond > span:last-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.popup-body .cond-feels { margin: 3px 0 0; font-size: 12.5px; color: var(--plum); opacity: .9; }
+.popup-body .sleepy { font-size: 14px; color: var(--ink); line-height: 1.5; }
+/* sleep-mode note spans the full width of the 2-column item grid */
+.sleepnote { grid-column: 1 / -1; display: block; padding: 14px 16px; color: var(--plum); font-weight: 600; text-align: center; line-height: 1.5; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  background: var(--plum); color: #fff; padding: 11px 18px; border-radius: 12px;
+  font-weight: 700; font-size: 13px; z-index: 1100; box-shadow: 0 6px 16px var(--shadow);
+  max-width: 90vw; text-align: center;
+}
+
+/* loading shimmer on the stage while fetching */
+.character-stage.loading .base { animation: bob 1s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }

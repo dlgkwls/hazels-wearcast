@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hazel's Wearcast — your weather outfit</title>
+  <meta name="description" content="A cute pixel-art outfit recommender that dresses for the weather." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header (PRD §9) -->
+    <header class="site-header">
+      <h1 class="title">Hazel's <span>Wearcast</span> <span class="cloud" aria-hidden="true">⛅</span></h1>
+      <button id="settingsBtn" class="gear-btn" aria-label="Settings" title="Settings">⚙️</button>
+    </header>
+
+    <!-- Conditions bar (PRD §9) -->
+    <section class="conditions" aria-label="Conditions">
+      <div class="field location-field">
+        <label for="locationInput">Location</label>
+        <div class="location-row">
+          <input id="locationInput" type="text" placeholder="Search a city…" autocomplete="off" />
+          <button id="searchBtn" class="mini-btn" title="Search">🔍</button>
+          <button id="geoBtn" class="mini-btn" title="Use my location">📍</button>
+        </div>
+        <ul id="geoResults" class="geo-results" hidden></ul>
+        <p id="locationChosen" class="chosen" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="dateInput">Date</label>
+        <input id="dateInput" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Time window</label>
+        <div class="time-row">
+          <input id="startTime" type="time" value="09:00" step="3600" />
+          <span class="dash">–</span>
+          <input id="endTime" type="time" value="18:00" step="3600" />
+        </div>
+      </div>
+
+      <div class="field occasion-field">
+        <label>Occasion</label>
+        <div id="occasion" class="occasion-group" role="group" aria-label="Occasion">
+          <button class="occ" data-occ="Play">🎀 Play</button>
+          <button class="occ" data-occ="Active">🏃 Active</button>
+          <button class="occ" data-occ="School">🎒 School</button>
+          <button class="occ" data-occ="Work">💼 Work</button>
+        </div>
+      </div>
+
+      <button id="startBtn" class="start-btn">Start <span aria-hidden="true">→</span></button>
+    </section>
+
+    <!-- Main area (PRD §9) -->
+    <main class="main">
+      <!-- Character panel -->
+      <section class="panel character-panel" aria-label="Character">
+        <div class="character-stage" id="stage">
+          <img class="base" src="Images%20in%20Closet/hazels_everskies_separated_assets_y2k/character_base_pajamas.png" alt="Hazel in pajamas" />
+          <div class="layers"></div>
+        </div>
+
+        <!-- Result panel -->
+        <div class="result" id="result" hidden>
+          <h2 class="result-title">Today's Outfit</h2>
+          <div class="weather-summary" id="weatherSummary"></div>
+          <!-- [v2] Part 6: 100-point material score (always visible; not part of the clo toggle) -->
+          <div class="material-score" id="materialScore" hidden></div>
+          <ul class="item-list" id="itemList"></ul>
+          <p class="memo" id="memo" hidden></p>
+        </div>
+        <div class="result placeholder" id="resultPlaceholder">
+          <p>Fill in the conditions and press <strong>Start</strong> — Hazel will get dressed for the weather. 🌈</p>
+        </div>
+      </section>
+
+      <!-- Closet panel -->
+      <section class="panel closet-panel" aria-label="Closet">
+        <div class="closet-head">
+          <h2>Hazel's Closet</h2>
+          <img class="closet-art" id="closetArt" src="Images%20in%20Closet/pixel_closet_versions/closet_open_with_clothes.png" alt="Open closet" />
+        </div>
+        <div class="closet-mode">
+          <span class="coord-hint" id="coordHint"></span>
+          <button id="coordBtn" class="coord-btn" type="button"></button>
+        </div>
+        <div class="closet-grid" id="closet"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span class="attribution">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0)
+        <!-- [v2] Part 6: clo explainer — always visible -->
+        <span class="clo-note">clo = the unit of clothing warmth — 1 clo ≈ a suit that keeps you comfortable seated at 21 °C. Lower is cooler, higher is warmer.</span>
+      </span>
+      <span class="made">Made with 🩷 for Hazel</span>
+    </footer>
+  </div>
+
+  <!-- Flight layer for the dress-up animation -->
+  <div class="flight-layer" aria-hidden="true"></div>
+
+  <!-- Settings modal (PRD §6) -->
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button id="closeSettings" class="gear-btn" aria-label="Close">✕</button>
+      </div>
+
+      <div class="setting-block">
+        <h3>Body type</h3>
+        <p class="hint">How sensitive are you to temperature? This nudges how warmly Hazel dresses.</p>
+        <div class="radio-row" id="bodyType">
+          <label><input type="radio" name="bodyType" value="cold" /> <span>🧊 Cold-sensitive</span></label>
+          <label><input type="radio" name="bodyType" value="normal" /> <span>😊 Normal</span></label>
+          <label><input type="radio" name="bodyType" value="heat" /> <span>🔥 Heat-sensitive</span></label>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <h3>Engineering details</h3>
+        <p class="hint">Show the insulation numbers (clo) behind each pick. Fabric tips always show.</p>
+        <label class="check-row"><input type="checkbox" id="showCloToggle" /> <span>🧶 Show engineering details (clo numbers)</span></label>
+      </div>
+
+      <div class="setting-block">
+        <h3>Face photo <span class="soon">coming soon</span></h3>
+        <p class="hint">Later you'll be able to add your face to Hazel's head.</p>
+        <div class="face-slot" aria-disabled="true">
+          <span>🙂 Face slot (disabled in v1)</span>
+          <input type="file" accept="image/*" disabled />
+        </div>
+      </div>
+
+      <button id="saveSettings" class="start-btn full">Save</button>
+    </div>
+  </div>
+
+  <!-- Generic pop-up (weather alerts + sleep mode) -->
+  <div class="modal-backdrop popup-backdrop" id="popupModal" hidden>
+    <div class="modal popup" role="alertdialog" aria-modal="true" aria-labelledby="popupTitle">
+      <button id="popupClose" class="popup-x" aria-label="Close">✕</button>
+      <div class="popup-emoji" id="popupEmoji" aria-hidden="true">🌈</div>
+      <h2 class="popup-title" id="popupTitle">Heads up</h2>
+      <div class="popup-body" id="popupBody"></div>
+      <button id="popupOk" class="start-btn full">Got it 🩷</button>
+    </div>
+  </div>
+
+  <!-- Toast for errors / status -->
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/catalog.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/dev-invariants.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
