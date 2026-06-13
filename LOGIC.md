@@ -114,8 +114,10 @@ Within the band, the occasion reorders preferences:
   - **Play** → may wear a **dress** (replaces top+bottom) if one fits the band; otherwise a skirt, else jeans/shorts.
   - **Active** → joggers / leggings / jeans; **never** skirts or dresses.
   - **School** → jeans / chinos / casual.
-  - **Work** → slacks / midi skirt / tidy jeans.
+  - **Work** → **long trousers only** — slacks / chinos (fleece-lined pants when cold). Never skirts, shorts, jeans, or dresses, even in heat (office dress code); when nothing is temp-ideal it keeps the lightest long pant (linen-weight).
 - **Outerwear** (`pickOuter`) — `OUTER_LEAN[occasion]` biases the pick (Work → blazer/trench; Active → windbreaker/fleece). The 23–27 band's cardigan is **optional** and dropped if `adjFeelsMin > 21` (it only stays for a cool evening).
+
+**Work dress-code bans (`OCCASION_BAN`).** On top of the style ordering, Work is business-formal and never wears: **tank / sweatshirt / hoodie** (tops), **shorts / denim shorts / jeans / joggers / short leggings** (bottoms), **windbreaker** (outerwear), **sandals / rain boots** (footwear — closed leather only; regular boots stand in when wet), or **sunglasses**. The ban is applied in every selection path (`pickCoreV2`, the v1 `pickTop`/`pickLower`/`pickOuter`, `pickFootwear`, and the gear assembly).
 
 ### 2.4 Conditions → accessories & weather gear (§8.4)
 
@@ -125,7 +127,7 @@ All thresholds use the **body-adjusted** feels-like. Highlights:
   - Rain boots when wet (and not freezing).
   - A **raincoat** (full shell, *replaces* the outerwear) only when it's both rainy and heavy-wet.
   - The hand holds **exactly one** thing, by priority: **umbrella** (rain, if no raincoat) → **parasol** (hot, sunny, Play/School).
-- **Sun / UV.** `strongSun` = (UV ≥ 6 or clear sky) and not snowing → adds **sunglasses** (when not pouring) and a **sun hat** (bucket for Play, cap otherwise; not for Work).
+- **Sun / UV.** `strongSun` = (UV ≥ 6 or clear sky) and not snowing → adds **sunglasses** (when not pouring; never for Work) and a **sun hat** (bucket for Play, cap otherwise; not for Work).
 - **Cold / wind.** Very cold (`adjFeelsMin ≤ 4`), **or** *cold* wind (≥30 km/h **and** `adjFeelsMin ≤ 10`) → **beanie**, **scarf + gloves**. Wind alone is never enough: a beanie/scarf/gloves fight *cold* wind chill, and `apparent_temperature` already bakes in wind chill (§4.2), so a 30+ km/h breeze in mild or hot weather adds nothing warm — no beanie at 40 °C.
 - **Socks.** Always exactly one pair — **thick** when `adjFeelsMin ≤ 4`, otherwise **regular**.
 - **Tights.** Added under a skirt/dress when `adjFeelsMin < 12`.
@@ -134,8 +136,18 @@ All thresholds use the **body-adjusted** feels-like. Highlights:
 
 ### 2.5 Footwear & headwear
 
-`pickFootwear()` — rain boots override everything; otherwise Work → loafers (boots if very cold), Active/School → sneakers, Play → sandals (hot) / boots (cold) / sneakers.
+`pickFootwear()` — **Work** is closed leather only (loafers, or boots when cold/wet — never rain boots or sandals); otherwise rain boots override when wet, then Active/School → sneakers, Play → sandals (hot) / boots (cold) / sneakers.
 `headwear` — beanie when cold (or cold + windy), else a sun hat when bright; at most one.
+
+### 2.5b "No matching outfit" gate (`rec.shopNeeded`)
+
+After the outfit is chosen and the §5 material layer scores it, if even the **best realistic materials** can't bring it within today's target interval — `material.scoreOptimized < 90` — the engine sets `rec.shopNeeded`. The UI then renders the best-effort outfit but raises a popup — *"It'll do… for now — Hazel's wearing the best match she's got, but the score came in under 90. A little shopping trip would really save the day!"* (`showShopPopup`, `js/app.js`). This nag takes priority over the weather heads-up. It applies to **every occasion**, so a heavily-constrained closet (e.g. Work in extreme heat, where long sleeves + trousers can't get light enough) honestly admits it has no good match. Brutal cold does **not** trigger it: the §5.5 saturation clamp scores the warmest buildable outfit 100.
+
+### 2.5c Multiple looks (re-press Start)
+
+Pressing **Start** again with the **same** location + date + time + occasion + body type cycles to a different outfit instead of repeating the first. `recommendVariants()` (`js/engine.js`) builds the list once: index `[0]` is the normal primary pick (best thermal match, any score), and `[1..]` are **distinct alternative cores** whose **base** material score is **≥ 95**. It's produced by re-running `recommend()` while excluding each core already taken (`opts.excludeCores`), so the engine walks its ranked cores top-down and keeps the good ones; accessories/gear are weather-driven and identical across looks, so the variety lives in the top/bottom/dress/outer.
+
+The UI (`onStart`, `js/app.js`) keys the list by a query **signature** (`variantSig`): a matching signature with a stored list just advances the index (no re-fetch, no popups, a *"Look N of M"* toast + hint line); any input change recomputes from a fresh forecast. Weather/shop popups fire only on the first build. If only the primary exists (no ≥95 alternatives — common for the heavily-restricted Work occasion in awkward weather), re-pressing simply re-shows it.
 
 ### 2.6 The dress rule (a hard constraint)
 

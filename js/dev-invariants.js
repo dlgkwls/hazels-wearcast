@@ -96,6 +96,86 @@
       }
     });
 
+    // 6b. Work is long-trousers only — never a skirt or dress at any temperature
+    //     (incl. heat), and the bottom is always one of the Work long-pants prefs.
+    (function () {
+      const WORK_PANTS = TV.BOTTOM_PREF_V2.Work;
+      for (let T = 42; T >= -10; T -= 1) {
+        const r = rec(T, 'Work');
+        check(!r.slots.skirt, '6b: Work never skirt at ' + T + '°C');
+        check(!r.slots.dress, '6b: Work never dress at ' + T + '°C');
+        check(!!r.slots.bottom && WORK_PANTS.indexOf(r.slots.bottom) !== -1,
+          '6b: Work bottom "' + r.slots.bottom + '" is a long pant at ' + T + '°C');
+      }
+    })();
+
+    // 6c. Work dress-code bans — none of these items ever appear in a Work outfit,
+    //     across temperatures AND sunny/wet conditions that would otherwise add
+    //     sunglasses / rain boots / sandals / a windbreaker.
+    (function () {
+      const BANNED = ['top_tank', 'top_sweatshirt', 'top_hoodie', 'bottom_shorts',
+        'bottom_denim_shorts', 'bottom_jeans', 'bottom_joggers', 'bottom_short_leggings',
+        'outer_windbreaker', 'shoe_sandals', 'shoe_rain_boots', 'gear_sunglasses'];
+      const SCENARIOS = [
+        function (T) { return W(T); },                                    // calm/dry
+        function (T) { return W(T, { uvPeak: 9, codes: [0] }); },         // bright sun
+        function (T) { return W(T, { precipPeak: 90, codes: [65] }); },   // heavy rain
+      ];
+      for (let T = 42; T >= -10; T -= 1) {
+        SCENARIOS.forEach(function (mk, si) {
+          const r = window.recommend(mk(T), 'Work', 'normal');
+          const ids = r.items.map(function (it) { return it.id; });
+          BANNED.forEach(function (b) {
+            check(ids.indexOf(b) === -1,
+              '6c: Work wears banned "' + b + '" at ' + T + '°C (scenario ' + si + ')');
+          });
+        });
+      }
+    })();
+
+    // 6d. shopNeeded is exactly (optimized material score < 90), and is set for at
+    //     least one real input (else the gate is dead). Sweep all occasions.
+    (function () {
+      let everTrue = false;
+      OCCASIONS.forEach(function (occ) {
+        for (let T = 45; T >= -12; T -= 1) {
+          const r = rec(T, occ);
+          const expect = !!(r.material && r.material.scoreOptimized < 90);
+          check(r.shopNeeded === expect,
+            '6d: shopNeeded ' + r.shopNeeded + ' != (opt ' + (r.material && r.material.scoreOptimized) +
+            ' < 90) at ' + T + '°C (' + occ + ')');
+          if (r.shopNeeded) everTrue = true;
+        }
+      });
+      check(everTrue, '6d: shopNeeded never triggers across the full sweep (dead gate?)');
+    })();
+
+    // 6e. recommendVariants: ≥1 look; [0] equals the plain recommend() pick; every
+    //     core is DISTINCT; every ALTERNATIVE (index ≥ 1) scores base ≥ 95; and the
+    //     feature actually yields >1 look somewhere (else it's dead).
+    (function () {
+      let everMultiple = false;
+      OCCASIONS.forEach(function (occ) {
+        [28, 24, 20, 16, 12, 6, 0].forEach(function (T) {
+          const list = window.recommendVariants(W(T), occ, 'normal', { max: 5, minScore: 95 });
+          check(list.length >= 1, '6e: empty variants at ' + T + '°C (' + occ + ')');
+          if (!list.length) return;
+          check(list[0].coreSig === rec(T, occ).coreSig,
+            '6e: variants[0] != primary at ' + T + '°C (' + occ + ')');
+          const sigs = {};
+          list.forEach(function (v, i) {
+            check(!sigs[v.coreSig], '6e: duplicate core "' + v.coreSig + '" at ' + T + '°C (' + occ + ')');
+            sigs[v.coreSig] = 1;
+            if (i >= 1) check(v.material && v.material.scoreBase >= 95,
+              '6e: alternative #' + i + ' scores ' + (v.material && v.material.scoreBase) +
+              ' < 95 at ' + T + '°C (' + occ + ')');
+          });
+          if (list.length > 1) everMultiple = true;
+        });
+      });
+      check(everMultiple, '6e: recommendVariants never returns >1 look (dead feature?)');
+    })();
+
     // 7. Floor respected: targetMove(T, Active) >= targetClo(T + 4).
     for (let T = 30; T >= -10; T--) {
       check(TV.targetMove(T, 'Active') >= TV.targetClo(T + 4) - 1e-9,
@@ -180,8 +260,10 @@
         [r.slots.top, r.slots.bottom, r.slots.skirt, r.slots.dress, r.slots.outerwear]
           .filter(Boolean)
           .forEach(function (id) {
+            // Work keeps long pants even in heat (policy), so a Work bottom from the
+            // pref list is feasible regardless of tempRange; others must be appropriate.
             const ok = bandUnion.indexOf(id) !== -1 ||
-                       (prefUnion.indexOf(id) !== -1 && TV.appropriate(id, T));
+                       (prefUnion.indexOf(id) !== -1 && (occ === 'Work' || TV.appropriate(id, T)));
             check(ok, 'acceptance: v2 pick "' + id + '" inside v1 feasibility at ' + T + '°C (' + occ + ')');
           });
       }

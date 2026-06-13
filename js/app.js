@@ -20,6 +20,7 @@
     geoList: [],
     coordinating: true,                 // manual dress-up is on until Start shows the weather pick
     manual: { slots: {}, acc: [] },     // hand-picked outfit: one id per category + accessory list
+    variants: { sig: null, list: [], index: 0 },  // multiple looks for the same query; cycled by re-pressing Start
   };
 
   let character = null;
@@ -361,6 +362,23 @@
     const date = $('#dateInput').value;
     if (!date) { toast('Choose a date'); return; }
 
+    const sig = variantSig(date, win);
+
+    // Re-pressing Start with the SAME query cycles to the next look — no re-fetch,
+    // no popups, just the next outfit in the list (all alternatives score ≥ 95).
+    if (state.variants.sig === sig && state.variants.list.length) {
+      const list = state.variants.list;
+      if (list.length > 1) {
+        state.variants.index = (state.variants.index + 1) % list.length;
+        await showVariant(list[state.variants.index]);
+        toast('✨ Look ' + (state.variants.index + 1) + ' of ' + list.length);
+      } else {
+        await showVariant(list[0]);
+        toast("That's the only 95+ look for today ✨");
+      }
+      return;
+    }
+
     const btn = $('#startBtn');
     btn.disabled = true; btn.textContent = 'Dressing…';
     $('#stage').classList.add('loading');
@@ -371,18 +389,44 @@
       $('#stage').classList.remove('loading');
       if (!w) { toast('No hourly data for that window. Try a nearer date.'); return; }
 
-      const rec = window.recommend(w, state.occasion, state.bodyType);
-      renderResult(rec);
-      markChosenTiles(rec.items);
-      exitCoordinate();                // the weather pick takes over from manual coordination
-      await character.dress(rec.items);
-      maybeWeatherPopup(rec);          // surface any notable weather condition
+      const list = window.recommendVariants(w, state.occasion, state.bodyType, { max: 5, minScore: 95 });
+      state.variants = { sig: sig, list: list, index: 0 };
+      const rec = list[0];
+
+      await showVariant(rec);
+      // The "go shopping" nag wins over the weather heads-up — it's the more
+      // important message (the rendered outfit is only a best effort).
+      if (rec.shopNeeded) showShopPopup();
+      else maybeWeatherPopup(rec);     // surface any notable weather condition
+      if (list.length > 1) toast('✨ ' + list.length + ' looks today — tap Start again for more');
     } catch (err) {
       $('#stage').classList.remove('loading');
       toast('Weather fetch failed. Check your connection and try again.');
       console.error(err);
     } finally {
       btn.disabled = false; btn.innerHTML = 'Start <span aria-hidden="true">→</span>';
+    }
+  }
+
+  // Identity of a query — same location/date/time/occasion/body ⇒ same looks list.
+  function variantSig(date, win) {
+    const loc = state.location ? (state.location.latitude + ',' + state.location.longitude) : '';
+    return [loc, date, $('#startTime').value, $('#endTime').value, state.occasion, state.bodyType].join('|');
+  }
+
+  // Render + dress one look, and reflect "Look N of M" in the hint line.
+  async function showVariant(rec) {
+    renderResult(rec);
+    markChosenTiles(rec.items);
+    exitCoordinate();                  // the weather pick takes over from manual coordination
+    updateLookHint();
+    await character.dress(rec.items);
+  }
+
+  function updateLookHint() {
+    const v = state.variants;
+    if (!state.coordinating && v.list.length > 1) {
+      $('#coordHint').textContent = '✨ Look ' + (v.index + 1) + ' of ' + v.list.length + ' — tap Start for another';
     }
   }
 
@@ -397,6 +441,13 @@
     character.dress([
       { id: 'dress_long_sleeve', slot: 'pajama' },
     ]);
+  }
+
+  // Shown when even the best realistic materials can't get the outfit within range
+  // (rec.shopNeeded — engine's optimized score < 90): the closet has no good match.
+  function showShopPopup() {
+    showPopup('😅', "It'll do… for now",
+      "<p>Hazel's wearing the best match she's got, but the score came in under 90. A little shopping trip would really save the day! 🛍️</p>");
   }
 
   function maybeWeatherPopup(rec) {

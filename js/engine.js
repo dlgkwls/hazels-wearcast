@@ -72,31 +72,61 @@
   /* v2 candidate pools — kept in sync with pickLower()'s inline lists (v1).
    * The pools mirror exactly what v1 could reach (band lists ∪ occasion
    * preference lists), gated by per-item tempRange, so v2 can never pick
-   * something v1 would have considered weather-inappropriate. */
+   * something v1 would have considered weather-inappropriate. EXCEPTION: Work is
+   * long-trousers only by policy (no skirts/shorts/dresses), so its pool is its
+   * pref list alone — never the band bottoms. */
   const BOTTOM_PREF_V2 = {
     Active: ['bottom_joggers', 'bottom_long_leggings', 'bottom_short_leggings', 'bottom_jeans', 'bottom_fleece_pants'],
     School: ['bottom_jeans', 'bottom_chinos', 'bottom_joggers', 'bottom_fleece_jeans', 'bottom_denim_shorts', 'bottom_shorts'],
-    Work:   ['bottom_slacks', 'skirt_midi', 'bottom_jeans', 'bottom_chinos', 'skirt_long', 'bottom_fleece_pants'],
+    Work:   ['bottom_slacks', 'bottom_chinos', 'bottom_fleece_pants'],
     Play:   ['bottom_jeans', 'bottom_denim_shorts', 'bottom_shorts', 'bottom_chinos', 'bottom_fleece_jeans'],
   };
+
+  /* Per-occasion dress-code bans — items an occasion never wears, layered on top
+   * of the temperature/style logic. Work is business-formal: no casual tops, no
+   * denim/shorts/leggings, no windbreaker, no sandals/rain boots, no sunglasses.
+   * (The long-trousers-only rule is enforced separately via the curated pool.) */
+  const OCCASION_BAN = {
+    Work: {
+      top_tank: 1, top_sweatshirt: 1, top_hoodie: 1,
+      bottom_shorts: 1, bottom_denim_shorts: 1, bottom_jeans: 1,
+      bottom_joggers: 1, bottom_short_leggings: 1,
+      outer_windbreaker: 1,
+      shoe_sandals: 1, shoe_rain_boots: 1,
+      gear_sunglasses: 1,
+    },
+  };
+  function isBanned(id, occasion) {
+    const b = OCCASION_BAN[occasion];
+    return !!(b && id && b[id]);
+  }
 
   /* §4.5 FILTER → ENUMERATE → SCORE → RANK. Brute force over complete cores
    * (≤ a few hundred combos). Fully deterministic: err → removable-outer
    * tie-break → occasion preference rank → stable id key. */
-  function pickCoreV2(band, occasion, T) {
+  function pickCoreV2(band, occasion, T, excludeCores) {
     const targetRest = targetClo(T);
     const targetMove = targetMoveFor(T, occasion);
+    const exclude = excludeCores || [];
 
     // -- FILTER ------------------------------------------------------------
-    let tops = band.tops.filter(function (id) { return appropriate(id, T); });
+    let tops = band.tops.filter(function (id) { return appropriate(id, T) && !isBanned(id, occasion); });
+    if (!tops.length) tops = band.tops.filter(function (id) { return !isBanned(id, occasion); });
     if (!tops.length) tops = band.tops.slice();
 
     let bottoms;
     if (occasion === 'Play') {
       bottoms = band.bottoms.slice();
+    } else if (occasion === 'Work') {
+      // Work is long-trousers only — never skirts, shorts, or dresses (dresses are
+      // excluded below). Candidates are the Work pref list alone, never the band's
+      // skirts/shorts. In heat she still keeps long pants (office dress code); when
+      // none are temp-eligible the ranker just picks the lightest (linen-weight).
+      const fit = BOTTOM_PREF_V2.Work.filter(function (id) { return appropriate(id, T); });
+      bottoms = fit.length ? fit : BOTTOM_PREF_V2.Work.slice();
     } else {
       const prefs = (BOTTOM_PREF_V2[occasion] || []).filter(function (id) { return appropriate(id, T); });
-      const bandPool = (occasion === 'Work') ? band.bottoms : band.bottoms.filter(notSkirt);
+      const bandPool = band.bottoms.filter(notSkirt);
       bottoms = dedupe(prefs.concat(bandPool));
     }
     if (!bottoms.length) bottoms = band.bottoms.length ? [band.bottoms[0]] : [];
@@ -108,8 +138,11 @@
       if (!dresses.length) dresses = band.dresses.slice();
     }
 
-    // §4.6-4 guard: a puffer is never a candidate above 10 °C.
-    let outerPool = (band.outers || []).filter(function (id) { return !(T > 10 && id.indexOf('puffer') !== -1); });
+    // §4.6-4 guard: a puffer is never a candidate above 10 °C. Also drop any
+    // outerwear banned for this occasion (e.g. Work never wears a windbreaker).
+    let outerPool = (band.outers || []).filter(function (id) {
+      return !(T > 10 && id.indexOf('puffer') !== -1) && !isBanned(id, occasion);
+    });
     const allowNone = !band.outers || !band.outers.length || !!band.outersOptional;
     const outers = allowNone ? [null].concat(outerPool) : (outerPool.length ? outerPool : [null]);
 
@@ -156,17 +189,27 @@
     }
     function idx(arr, v, miss) { const i = arr ? arr.indexOf(v) : -1; return i === -1 ? miss : i; }
 
-    let best = null, bestR = null, maxCore = 0;
-    cores.forEach(function (c) {
+    // Rank EVERY core (deterministic total order), then take the best whose
+    // signature isn't in `exclude`. Excluding the already-shown cores is what lets
+    // recommendVariants() hand back a different ≥95 outfit on each repeat Start.
+    let maxCore = 0;
+    const scored = cores.map(function (c) {
       if (c.clo > maxCore) maxCore = c.clo;
-      const r = rankParts(c);
-      if (!best || r.err < bestR.err - 1e-9 ||
-          (Math.abs(r.err - bestR.err) < 1e-9 && (r.carries < bestR.carries ||
-            (r.carries === bestR.carries && (r.pref < bestR.pref ||
-              (r.pref === bestR.pref && r.key < bestR.key)))))) {
-        best = c; bestR = r;
-      }
+      return { c: c, r: rankParts(c) };
     });
+    scored.sort(function (a, b) {
+      const ra = a.r, rb = b.r;
+      if (Math.abs(ra.err - rb.err) > 1e-9) return ra.err - rb.err;
+      if (ra.carries !== rb.carries) return ra.carries - rb.carries;
+      if (ra.pref !== rb.pref) return ra.pref - rb.pref;
+      return ra.key < rb.key ? -1 : (ra.key > rb.key ? 1 : 0);
+    });
+    let chosen = null;
+    for (let i = 0; i < scored.length; i++) {
+      if (exclude.indexOf(scored[i].r.key) === -1) { chosen = scored[i]; break; }
+    }
+    if (!chosen) chosen = scored[0];   // all excluded → fall back to the overall best
+    const best = chosen.c;
 
     // §4.2 saturation: the whole closet tops out near maxCore + ~0.28 clo of
     // accessories (boots/thick socks/scarf/gloves/beanie). Below that, pick the
@@ -181,6 +224,7 @@
       targetRest: targetRest,
       targetMove: targetMove,
       saturated: saturated,
+      coreSig: chosen.r.key,
     };
   }
 
@@ -442,16 +486,18 @@
   };
 
   function pickTop(band, occasion) {
+    const pool = band.tops.filter(function (id) { return !isBanned(id, occasion); });
+    const tops = pool.length ? pool : band.tops;
     const pref = TOP_PREF[occasion];
-    if (pref) { const t = firstIn(pref, band.tops); if (t) return t; }
-    return band.tops[0];
+    if (pref) { const t = firstIn(pref, tops); if (t) return t; }
+    return tops[0];
   }
 
   /* §8.2 + §8.3 bottom-or-dress selection.
    * Returns { dress } OR { bottom } (one of skirt/bottom id). */
   function pickLower(band, occasion, temp) {
-    // A dress may replace top+bottom for Play and Work (§8.2). Use it as the
-    // stylish default for Play when one fits the band; Work stays tidy (trousers/midi).
+    // A dress may replace top+bottom for Play only (§8.2) — the stylish default
+    // when one fits the band. Work stays in long trousers (handled below).
     if (occasion === 'Play' && band.dresses && band.dresses.length) {
       const d = firstAppropriate(band.dresses, temp) || band.dresses[0];
       if (d) return { dress: d };
@@ -470,9 +516,10 @@
       return { bottom: b };
     }
     if (occasion === 'Work') {
-      // Slacks, or tidy jeans / midi skirt.
-      const prefs = ['bottom_slacks', 'skirt_midi', 'bottom_jeans', 'bottom_chinos', 'skirt_long', 'bottom_fleece_pants'];
-      const b = firstAppropriate(prefs, temp) || firstIn(prefs, band.bottoms) || band.bottoms[0];
+      // Long trousers only — slacks or chinos (fleece-lined when cold). No skirts,
+      // shorts, jeans, or dresses.
+      const prefs = ['bottom_slacks', 'bottom_chinos', 'bottom_fleece_pants'];
+      const b = firstAppropriate(prefs, temp) || prefs[0];
       return { bottom: b };
     }
     // Play (no dress chosen): skirt OK; jeans fine.
@@ -497,9 +544,11 @@
     // Optional outer (e.g. 23-27 "light cardigan, evening"): only if it cools off.
     if (band.outersOptional && adjFeelsMin > 21) return null;
 
+    const pool = band.outers.filter(function (id) { return !isBanned(id, occasion); });
+    if (!pool.length) return null;
     const lean = OUTER_LEAN[occasion];
-    if (lean) { const o = firstIn(lean, band.outers); if (o) return o; }
-    return band.outers[0];
+    if (lean) { const o = firstIn(lean, pool); if (o) return o; }
+    return pool[0];
   }
 
   function isSunnyCode(codes) {
@@ -534,12 +583,14 @@
   }
 
   function pickFootwear(occasion, adjFeelsMin, rainBoots) {
-    if (rainBoots) return 'shoe_rain_boots';
     const cold = adjFeelsMin <= 8;
     const veryCold = adjFeelsMin <= 4;
-    if (occasion === 'Work') return veryCold ? 'shoe_boots' : 'shoe_loafers';
+    // Work: closed leather only — never rain boots or sandals (dress code). In the
+    // wet, regular boots stand in for rain boots; loafers otherwise.
+    if (occasion === 'Work') return (veryCold || rainBoots) ? 'shoe_boots' : 'shoe_loafers';
+    if (rainBoots) return 'shoe_rain_boots';
     if (occasion === 'Active') return 'shoe_sneakers';
-    if (occasion === 'School') return cold ? 'shoe_sneakers' : 'shoe_sneakers';
+    if (occasion === 'School') return 'shoe_sneakers';
     // Play: by temperature.
     if (adjFeelsMin >= 24) return 'shoe_sandals';
     if (cold) return 'shoe_boots';
@@ -559,9 +610,10 @@
 
     // [v2] clo-targeted selection (Part 4) — v1 band-pick kept as fallback.
     const useV2 = USE_THERMAL_V2 && !(opts && opts.forceV1);
+    const excludeCores = (opts && opts.excludeCores) || [];
     let top, lower, outer, v2 = null;
     if (useV2) {
-      v2 = pickCoreV2(band, occasion, adjFeelsMin);
+      v2 = pickCoreV2(band, occasion, adjFeelsMin, excludeCores);
       top = v2.top;
       lower = v2.lower;
       outer = v2.outer;
@@ -628,7 +680,7 @@
     accessories.push(adjFeelsMin <= 4 ? 'acc_thick_socks' : 'acc_socks');
 
     // Weather gear assembly. Sunglasses (face) are independent of the hand-held item.
-    if (strongSun && !heavyWet && precip < 50) gear.push('gear_sunglasses');
+    if (strongSun && !heavyWet && precip < 50 && !isBanned('gear_sunglasses', occasion)) gear.push('gear_sunglasses');
     if (raincoat) gear.push('gear_raincoat');
     if (handheld) gear.push(handheld);
 
@@ -702,6 +754,11 @@
       material = materialAnalysis(items, w, occasion, adjFeelsMin, adjFeelsMax, snowy, targetMove, targetRest);
     }
 
+    // "Go shopping" gate: if even the BEST realistic materials can't bring the
+    // outfit within range (optimized score < 90), the closet has no good match
+    // for this time/weather/occasion — surfaced as a popup by the UI.
+    const shopNeeded = !!(material && material.scoreOptimized < 90);
+
     return {
       band: band.key,
       adjFeelsMin: adjFeelsMin,
@@ -720,6 +777,8 @@
         saturated: !!(v2 && v2.saturated),
       },
       material: material,
+      shopNeeded: shopNeeded,
+      coreSig: v2 ? v2.coreSig : null,
       memo: memo,
       conditions: conditions,
       summary: {
@@ -729,6 +788,31 @@
         windPeak: Math.round(wind), sunny: sunny, peakHour: w.peakHour,
       },
     };
+  }
+
+  /* Several distinct looks for ONE weather/occasion — the "tap Start again for
+   * another option" feature. Returns an ordered list of full recommendations:
+   *   [0] the primary pick (best thermal match, whatever it scores), then
+   *   [1..] DISTINCT alternative cores whose base material score ≥ minScore (95).
+   * Built by re-running recommend() while excluding each core already taken, so
+   * it walks the ranked cores top-down and keeps the good ones. Accessories/gear
+   * are weather-driven and identical across looks — the variety is in the core. */
+  function recommendVariants(w, occasion, bodyType, opts) {
+    const max = (opts && opts.max) || 5;
+    const minScore = (opts && opts.minScore != null) ? opts.minScore : 95;
+    const CAP = 24;                       // hard stop; the closet has few cores anyway
+    const taken = [];                     // core signatures already used
+    const variants = [];
+    for (let i = 0; i < CAP && variants.length < max; i++) {
+      const rec = recommend(w, occasion, bodyType, { excludeCores: taken });
+      const sig = rec.coreSig;
+      if (sig == null) { if (!variants.length) variants.push(rec); break; }  // v1 path
+      if (taken.indexOf(sig) !== -1) break;                 // no new distinct core left
+      taken.push(sig);
+      const base = rec.material ? rec.material.scoreBase : 0;
+      if (variants.length === 0 || base >= minScore) variants.push(rec);
+    }
+    return variants;
   }
 
   function dedupe(arr) { const s = []; arr.forEach(function (x) { if (s.indexOf(x) === -1) s.push(x); }); return s; }
@@ -766,6 +850,7 @@
   }
 
   window.recommend = recommend;
+  window.recommendVariants = recommendVariants;
   // [v2] exposed for the §4.6 invariants (?dev) and A/B comparison. Read-only use.
   window.ThermalV2 = {
     enabled: USE_THERMAL_V2,
