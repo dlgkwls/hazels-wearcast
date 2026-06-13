@@ -12,7 +12,7 @@
   // Stacking order (higher = front). Falls back by category, then a default.
   // Spec order, back→front:
   //   socks · tights · footwear · bottoms/skirts · dresses/pajama · tops ·
-  //   outerwear · face-over-outerwear · headwear · accessories (scarf/gloves) · weather gear
+  //   outerwear · headwear · accessories (scarf/gloves) · weather gear
   //   (hand-helds + sunglasses, highest so they read on the hand/face).
   // Footwear sits *below* bottoms so hems drape over the shoe tops.
   // §3.9: tights are full-leg sprites (feet included) — they live with the socks
@@ -26,7 +26,6 @@
     dress: 24, pajama: 24,
     top: 30,
     outerwear: 40, gear_raincoat: 42,
-    head_face_for_outerwear: 48,   // face redrawn ON TOP of the coat collar (below the hat)
     headwear: 50,
     acc_scarf: 58, acc_gloves: 60,
     gear_umbrella: 72, gear_parasol: 72, gear_sunglasses: 78,
@@ -117,10 +116,6 @@
     hat_cap:              { dy: -9.2 },
     hat_beanie:           { dy: -9.2 },
     hat_bucket:           { dy: -18.5 },
-    // Face-over-outerwear: a 1086×1448 head sprite (wider aspect than the 437×1211 stage).
-    // sx/sy both un-distort the aspect AND shrink it so the face matches the base face
-    // (measured skin box), anchored at the face centre (oy 54.5) so its eyes land on the base eyes.
-    head_face_for_outerwear: { sx: 0.82, sy: 0.40, dx: 0, dy: -38, ox: 50, oy: 54.5 },
     outer_light_cardigan: { s: 1.67090, dy: 8.0305 },
     outer_heavy_cardigan: { s: 1.67090, dx: -1, dy: 8.3714 },
     outer_windbreaker:    { s: 1.67090, dy: 7.22745 },

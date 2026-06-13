@@ -3,7 +3,7 @@
 A plain-English (plus code-referenced) walkthrough of the whole logic — what is built today, and the v2 engineering layer to build next:
 
 1. **How user inputs become an outfit** — the weather → recommendation pipeline *(shipped — Parts 1–2)*.
-2. **How the z-index / layering works** — how the character is composited when she "wears" items *(shipped — Part 3, with two fixes specced in §3.9)*.
+2. **How the z-index / layering works** — how the character is composited when she "wears" items *(shipped — Part 3, with two fixes specced in §3.8)*.
 3. **Thermal engine v2** — clo-based insulation targeting and selection *(Part 4)* **[v2 — to build]**.
 4. **Material layer** — material/clo optimization and the 100-point material score *(Part 5)* **[v2 — to build]**.
 5. **UI integration contract + build order** — where v2 surfaces without touching the layout *(Parts 6–7)*.
@@ -126,7 +126,7 @@ All thresholds use the **body-adjusted** feels-like. Highlights:
   - A **raincoat** (full shell, *replaces* the outerwear) only when it's both rainy and heavy-wet.
   - The hand holds **exactly one** thing, by priority: **umbrella** (rain, if no raincoat) → **parasol** (hot, sunny, Play/School).
 - **Sun / UV.** `strongSun` = (UV ≥ 6 or clear sky) and not snowing → adds **sunglasses** (when not pouring) and a **sun hat** (bucket for Play, cap otherwise; not for Work).
-- **Cold / wind.** Very cold (`adjFeelsMin ≤ 4`) or strong wind (≥30 km/h) → **beanie**, **scarf + gloves**.
+- **Cold / wind.** Very cold (`adjFeelsMin ≤ 4`), **or** *cold* wind (≥30 km/h **and** `adjFeelsMin ≤ 10`) → **beanie**, **scarf + gloves**. Wind alone is never enough: a beanie/scarf/gloves fight *cold* wind chill, and `apparent_temperature` already bakes in wind chill (§4.2), so a 30+ km/h breeze in mild or hot weather adds nothing warm — no beanie at 40 °C.
 - **Socks.** Always exactly one pair — **thick** when `adjFeelsMin ≤ 4`, otherwise **regular**.
 - **Tights.** Added under a skirt/dress when `adjFeelsMin < 12`.
 
@@ -135,7 +135,7 @@ All thresholds use the **body-adjusted** feels-like. Highlights:
 ### 2.5 Footwear & headwear
 
 `pickFootwear()` — rain boots override everything; otherwise Work → loafers (boots if very cold), Active/School → sneakers, Play → sandals (hot) / boots (cold) / sneakers.
-`headwear` — beanie when cold/windy, else a sun hat when bright; at most one.
+`headwear` — beanie when cold (or cold + windy), else a sun hat when bright; at most one.
 
 ### 2.6 The dress rule (a hard constraint)
 
@@ -143,7 +143,7 @@ A **dress or pajama replaces top + bottom + skirt entirely**. After slot assembl
 
 ### 2.7 Sleeping hours
 
-If the window **starts** between 11 PM and 5 AM (`isSleepWindow`), the app short-circuits *before any weather call*: it shows a "Sleeping time!" popup and dresses her in **pajamas only** (`dress_long_sleeve`) plus the face overlay. No outfit, no forecast.
+If the window **starts** between 11 PM and 5 AM (`isSleepWindow`), the app short-circuits *before any weather call*: it shows a "Sleeping time!" popup and dresses her in **pajamas only** (`dress_long_sleeve`). No outfit, no forecast.
 
 ### 2.8 The removable-layer memo (§8.5)
 
@@ -178,13 +178,12 @@ Each item's `z-index` is set from this table (`js/character.js:18`). Higher = cl
 | 1 | (base) | the character body — CSS, not in `Z` |
 | 10 | socks | `acc_socks`, `acc_thick_socks` |
 | 14 | footwear | all `shoe_*` |
-| ~~18~~ → **12** | tights | `acc_tights` *(fix — see §3.9)* |
+| ~~18~~ → **12** | tights | `acc_tights` *(fix — see §3.8)* |
 | 20 | bottoms / skirts | `bottom_*`, `skirt_*` |
 | 24 | dresses / pajama | `dress_*`, `pajama` |
 | 30 | tops | `top_*` |
 | 40 | outerwear | `outer_*` |
 | 42 | rain shell | `gear_raincoat` |
-| 48 | **face-over-outerwear** | `head_face_for_outerwear` |
 | 50 | headwear | `hat_*` |
 | 58 | scarf | `acc_scarf` |
 | 60 | gloves | `acc_gloves` |
@@ -193,7 +192,7 @@ Each item's `z-index` is set from this table (`js/character.js:18`). Higher = cl
 | *35* | *fallback* | anything uncategorized |
 
 Two deliberate orderings worth noting:
-- **Footwear (14) sits *below* bottoms (20)** so trouser/skirt hems drape over the shoe tops. *(Tights moving to 12 — under the shoes, like socks — and the leggings tuck rule are specced in §3.9.)*
+- **Footwear (14) sits *below* bottoms (20)** so trouser/skirt hems drape over the shoe tops. *(Tights moving to 12 — under the shoes, like socks — and the leggings tuck rule are specced in §3.8.)*
 - **Hand-helds and sunglasses are highest (70–78)** so they read on top of the hand and face.
 
 ### 3.3 Resolving an item's z (`zFor`)
@@ -204,17 +203,13 @@ zFor(id):
   2. else item's category in Z? → use that   (e.g. any top → 30)
   3. else                       → 35 (default)
 ```
-(`js/character.js:32`.) So most items resolve by **category**; only the handful with their own entry (raincoat, the face overlay, each gear piece) override that.
+(`js/character.js:32`.) So most items resolve by **category**; only the handful with their own entry (raincoat, each gear piece) override that.
 
-### 3.4 The face-over-outerwear trick
-
-When a coat/raincoat/pajama has a high collar, it would cover the chin. So whenever an **outer shell is worn but no hat is**, the engine adds a special `head_face_for_outerwear` layer at **z 48** — the face/head redrawn *on top of* the collar (z 40–42) but *below* a hat (z 50). If a hat is worn, it's skipped (the hat sprite already carries its own face). This is added in both the engine (`buildItemList`, `js/engine.js:347`) and the manual path (`renderManual`, `js/app.js:304`).
-
-### 3.5 Back-to-front build order
+### 3.4 Back-to-front build order
 
 `buildItemList()` (`js/engine.js:331`) emits the chosen ids as a flat list in **back-to-front order** — the same order as the z-index. That order does double duty: it's the paint order *and* the order garments **fly in** during the animation, so the dress-up reads naturally (socks first, sunglasses last).
 
-### 3.6 Per-garment fit (`fitFor` / `applyFit`)
+### 3.5 Per-garment fit (`fitFor` / `applyFit`)
 
 Even though sprites share the base registration, a few read better slightly scaled or nudged. `applyFit()` puts a CSS transform on each layer:
 
@@ -235,18 +230,18 @@ defaults  ←  CAT_FIT[category]  ←  ID_FIT[id]
 
 This is the layer that all the "shift the tank top up 1%", "reduce the polo 3%", "waist at 46%" tweaks live in — pure CSS transforms on top of the shared canvas, **never** edits to the sprite's body position. (The PNG itself is only edited for left/right *gap* changes, where a transform can't help.)
 
-### 3.7 The dress-up animation
+### 3.6 The dress-up animation
 
 `dress()` (`js/character.js:241`) swaps the whole outfit:
 1. Fade out & remove **every** previous `.layer` (with a wall-clock fallback so a flaky animation can't leave a ghost garment behind).
 2. Build the new hidden layers (`_buildLayers`) — each gets its z-index and fit applied up front.
 3. **Fly each garment in** from its closet tile (`_fly`): a clone starts shrunk onto the tile and grows into place with a springy easing, ~0.42–0.78 s, **staggered 130 ms** so the pieces overlap into one quick "whoosh." When a flight lands, the real worn layer is revealed.
 
-### 3.8 Manual "coordinate your own" mode
+### 3.7 Manual "coordinate your own" mode
 
 Before pressing Start, tapping closet tiles dresses her by hand (`coordinate()`, `js/character.js:282`) — same `zFor` and `applyFit`, but **snappy** (no fly-in): it diffs against what's already worn, fades out dropped pieces, keeps the rest, adds new ones. One item per category (accessories stack; only one sock pair). Pressing **Start** hands control to the weather pick (`exitCoordinate`).
 
-### 3.9 Stacking fixes & tuck rules **[v2 — to build]**
+### 3.8 Stacking fixes & tuck rules **[v2 — to build]**
 
 Two corrections to the `Z` map, plus a rule a single global order cannot express:
 
@@ -314,7 +309,7 @@ A moving body produces more heat, so it needs less insulation — that's the phy
 1. **Use the low end** of each activity's real met range — dress for the pauses, not the sprint.
 2. **Discount with a floor:** `targetMove = max(targetClo(T) − discount, targetClo(T + 4))`. Activity may lighten the outfit by at most ~one temperature band.
 3. **Dual target (how ISO 11079 / IREQ handles variable activity):** also keep `targetRest = targetClo(T)`. Prefer outfits whose core lands **inside `[targetMove, targetRest]` with the gap carried by a removable outer layer**; the memo then reads "you'll warm up once you're moving — shed the windbreaker."
-4. **Accessory rules ignore met.** Scarf / gloves / beanie / tights / socks (§2.4) keep keying off raw adjusted temperature + wind. Exercise heats the core; fingers and ears still freeze (vasoconstriction). Active at −5 °C still gets gloves.
+4. **Accessory rules ignore met.** Scarf / gloves / beanie / tights / socks (§2.4) keep keying off raw adjusted temperature (and *cold* wind). Exercise heats the core; fingers and ears still freeze (vasoconstriction) when it's cold. Active at −5 °C still gets gloves. Wind only counts toward warm accessories when it's also cold (`adjFeelsMin ≤ 10`) — a hot breeze chills nothing.
 
 ### 4.4 Garment insulation table (add `clo:` to every record in `js/catalog.js`)
 
@@ -524,7 +519,7 @@ The v2 features are **text annotations on elements that already exist**. Hard ru
 
 1. **`js/catalog.js`** — add `clo:` (table §4.4), `tuckable: true` on the two leggings, `material:` / `fabricOptions:` (§5.3). Match by *name*; ids stay untouched.
 2. **`js/engine.js`** — add `targetClo()`, the met table, and the filter → enumerate → rank selector behind `const USE_THERMAL_V2 = true;`. **Keep the v1 band-pick path callable** as fallback and for A/B comparison. Then add `materialAnalysis()` (§5.4–5.6), which runs *after* selection and returns `{ optimizedClo, worstClo, scoreBase, scoreOptimized, scoreWorst, perItemNotes }`.
-3. **`js/character.js`** — §3.9: tights z fix, the tuckable exception pass, sort-by-resolved-z list order.
+3. **`js/character.js`** — §3.8: tights z fix, the tuckable exception pass, sort-by-resolved-z list order.
 4. **`js/weather.js`** — request `relative_humidity_2m` (optional refinement, §5.6).
 5. **`js/app.js` / `index.html` / `styles.css`** — Part 6 annotations: the `#materialScore` block, per-item `mat-note` sub-lines, the footer clo explainer, the summary chip, and the settings toggle.
 6. **Invariants** — §4.6 behind a `?dev` query flag or a `tests.html`.
@@ -539,11 +534,11 @@ Every item is one record; the sprite filename equals the `id`:
 ```js
 { id, name, category, layer, group, tempRange: [lo, hi], seasonTags,
   clo,                    // [v2] §4.4 — garment insulation
-  tuckable,               // [v2] §3.9 — leggings only
+  tuckable,               // [v2] §3.8 — leggings only
   material | fabricOptions } // [v2] §5.3 — fixed material, or choosable fabrics
 ```
 
-- **`category`** drives both z-index (via `Z`) and fit (via `CAT_FIT`): `top · bottom · skirt · dress · pajama · outerwear · footwear · headwear · accessory · gear · faceoverlay`.
+- **`category`** drives both z-index (via `Z`) and fit (via `CAT_FIT`): `top · bottom · skirt · dress · pajama · outerwear · footwear · headwear · accessory · gear`.
 - **`tempRange`** is the adjusted-feels-like window where the item is appropriate — the engine's safety check when an occasion preference substitutes an item.
 - **`group`** is just the closet section label; `CLOSET_GROUPS` sets their order.
 - A few hats map to a different sprite file (`SPRITE_FILE`) because they ship as "cap + face + bob" versions meant to layer over the head.

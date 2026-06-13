@@ -146,6 +146,28 @@
       });
     });
 
+    // 11. Wind is a COLD signal only. Strong wind (≥30 km/h) must NOT add a
+    //     beanie/scarf/gloves in mild or hot weather — only when it's also cold
+    //     (adjFeelsMin ≤ 10). Guards the "beanie in 40 °C" regression.
+    const WARM_ACC = ['hat_beanie', 'acc_scarf', 'acc_gloves'];
+    OCCASIONS.forEach(function (occ) {
+      [40, 30, 24, 18, 13].forEach(function (T) {       // all warmer than 10 °C
+        const r = window.recommend(W(T, { windPeak: 45 }), occ, 'normal');
+        const worn = [r.slots.headwear].concat(r.accessories);
+        WARM_ACC.forEach(function (id) {
+          check(worn.indexOf(id) === -1,
+            '11: no ' + id + ' in ' + T + '°C wind 45 km/h (' + occ + ')');
+        });
+      });
+      // ...but a cold windy day still bundles up the extremities.
+      (function () {
+        const r = window.recommend(W(6, { windPeak: 45 }), occ, 'normal');
+        check(r.slots.headwear === 'hat_beanie', '11: beanie at 6°C windy (' + occ + ')');
+        check(r.accessories.indexOf('acc_scarf') !== -1, '11: scarf at 6°C windy (' + occ + ')');
+        check(r.accessories.indexOf('acc_gloves') !== -1, '11: gloves at 6°C windy (' + occ + ')');
+      })();
+    });
+
     // Acceptance (Part 7): v2 core picks stay inside v1's feasibility —
     //    every core item is in the band's lists, or reachable via the occasion
     //    preference lists AND temperature-appropriate.

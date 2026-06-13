@@ -322,11 +322,8 @@
       if (s[cat]) items.push({ id: s[cat], slot: cat });
     });
     state.manual.acc.forEach(function (id) { items.push({ id: id, slot: 'accessory' }); });
-    // redraw the face on top of any outer shell (coat / raincoat / pajama) unless a hat is worn
-    const hasShell = s.outerwear || s.pajama || s.gear === 'gear_raincoat';
-    if (hasShell && !s.headwear) items.push({ id: 'head_face_for_outerwear', slot: 'faceoverlay' });
     character.coordinate(items);
-    markChosenTiles(items.filter(function (it) { return it.slot !== 'faceoverlay'; }));
+    markChosenTiles(items);
   }
 
   function clearManual() { state.manual = { slots: {}, acc: [] }; renderManual(); }
@@ -397,10 +394,8 @@
     renderSleep();
     exitCoordinate();
     markChosenTiles([{ id: 'dress_long_sleeve' }]);
-    // Sleepwear behaves like outerwear: redraw the face on top of the pajama collar.
     character.dress([
       { id: 'dress_long_sleeve', slot: 'pajama' },
-      { id: 'head_face_for_outerwear', slot: 'faceoverlay' },
     ]);
   }
 
@@ -470,9 +465,9 @@
     const noteById = {};
     if (rec.material) rec.material.notes.forEach(function (n) { noteById[n.id] = n; });
 
-    // item list grouped by slot order (the face overlay is an internal fix, not shown)
+    // item list grouped by slot order
     const list = $('#itemList'); list.innerHTML = '';
-    rec.items.filter(function (it) { return it.slot !== 'faceoverlay'; }).forEach(function (it) {
+    rec.items.forEach(function (it) {
       const li = document.createElement('li');
       const img = document.createElement('img'); img.className = 'thumb'; img.src = window.spriteUrl(it.id); img.alt = '';
       cropToContent(img, window.spriteUrl(it.id));

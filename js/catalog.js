@@ -125,10 +125,6 @@
     { id: 'gear_umbrella',        name: 'Umbrella',            category: 'gear', layer: 'weather-gear', group: 'Weather gear', tempRange: [-99, 99], seasonTags: ['rain'], clo: 0 },
     { id: 'gear_parasol',         name: 'Parasol',             category: 'gear', layer: 'weather-gear', group: 'Weather gear', tempRange: [26, 99],  seasonTags: ['sun'], clo: 0 },
     { id: 'gear_raincoat',        name: 'Raincoat',            category: 'gear', layer: 'weather-gear', group: 'Weather gear', tempRange: [-99, 99], seasonTags: ['rain'], clo: 0.20, material: 'nylonShell' },
-
-    // ---- Special: face overlay (not in the closet — group not listed in CLOSET_GROUPS).
-    //      Auto-worn ON TOP of outerwear so the face/head reads above a high collar. ----
-    { id: 'head_face_for_outerwear', name: 'Face (over outerwear)', category: 'faceoverlay', layer: 'faceoverlay', group: 'Face', tempRange: [-99, 99], seasonTags: [] },
   ];
 
   const byId = {};

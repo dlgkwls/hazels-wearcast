@@ -603,13 +603,22 @@
     // Footwear (needs the rainBoots decision).
     const footwear = pickFootwear(occasion, adjFeelsMin, rainBoots);
 
-    // Headwear (exactly one): warm beanie when cold/windy; else a sun hat when bright.
+    // Wind only calls for warm gear when it's actually COLD. A beanie/scarf/gloves
+    // protect the extremities against *cold* wind chill; in mild or hot weather a
+    // 30+ km/h breeze is just moving air (often welcome), never a reason to bundle
+    // up. apparent_temperature already folds in wind chill (§4.2), so the cold case
+    // is mostly caught by `veryCold` anyway — this gate just extends the wind path
+    // up to ~10 °C without ever firing it in the heat (no beanie at 40 °C).
+    const coldWind = wind >= 30 && adjFeelsMin <= 10;
+
+    // Headwear (exactly one): warm beanie when it's cold (or cold + windy); else a
+    // sun hat when bright.
     let headwear = null;
-    if (veryCold || wind >= 30) headwear = 'hat_beanie';
+    if (veryCold || coldWind) headwear = 'hat_beanie';
     else if (strongSun && adjFeelsMin >= 14 && occasion !== 'Work') headwear = (occasion === 'Play') ? 'hat_bucket' : 'hat_cap';
 
-    // Cold accessories.
-    if (veryCold || wind >= 30) accessories.push('acc_scarf', 'acc_gloves');
+    // Cold accessories (scarf + gloves) — same cold-or-cold-wind gate.
+    if (veryCold || coldWind) accessories.push('acc_scarf', 'acc_gloves');
 
     // Tights under a skirt/dress when chilly.
     const wearingSkirtOrDress = !!lower.dress || (lower.bottom && window.itemById(lower.bottom).category === 'skirt');
@@ -741,9 +750,6 @@
     add(slots.top, 'top');
     add(slots.outerwear, 'outerwear');
     if (has(gear, 'gear_raincoat')) add('gear_raincoat', 'outerwear');
-    // Redraw the face on top of the coat collar when an outer shell is worn — but NOT
-    // if a hat is also worn, since the hat sprite already carries its own face.
-    if ((slots.outerwear || has(gear, 'gear_raincoat')) && !slots.headwear) add('head_face_for_outerwear', 'faceoverlay');
     add(slots.headwear, 'headwear');
     if (has(acc, 'acc_scarf')) add('acc_scarf', 'scarf');
     if (has(acc, 'acc_gloves')) add('acc_gloves', 'gloves');
