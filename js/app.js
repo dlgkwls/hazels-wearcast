@@ -7,10 +7,11 @@
 
   const LS = {
     bodyType: 'wearcast.bodyType',
-    location: 'wearcast.location',
     occasion: 'wearcast.occasion',
     showClo: 'wearcast.showClo',        // [v2] Part 6 engineering-details toggle
   };
+  // Drop any location saved by older builds — the city is no longer persisted.
+  try { localStorage.removeItem('wearcast.location'); } catch (e) {}
 
   const state = {
     location: null,      // {label, latitude, longitude}
@@ -47,14 +48,8 @@
     state.occasion = localStorage.getItem(LS.occasion) || 'Play';
     state.showClo = localStorage.getItem(LS.showClo) !== '0';   // [v2] default ON
     applyCloVisibility();
-    try {
-      const loc = JSON.parse(localStorage.getItem(LS.location) || 'null');
-      if (loc && loc.latitude != null) {
-        state.location = loc;
-        showChosenLocation(loc.label);
-        $('#locationInput').value = loc.label;
-      }
-    } catch (e) {}
+    // Location is intentionally NOT restored — every refresh starts on a blank
+    // "Search a city…" prompt rather than re-filling the last-used city.
   }
 
   function initSettingsModal() {
@@ -179,7 +174,6 @@
 
   function chooseLocation(r) {
     state.location = { label: r.label, latitude: r.latitude, longitude: r.longitude };
-    localStorage.setItem(LS.location, JSON.stringify(state.location));
     $('#locationInput').value = r.label;
     $('#geoResults').hidden = true;
     showChosenLocation(r.label);
@@ -199,7 +193,6 @@
       const lat = pos.coords.latitude, lon = pos.coords.longitude;
       const label = window.Weather.coordLabel(lat, lon);
       state.location = { label: 'My location (' + label + ')', latitude: lat, longitude: lon };
-      localStorage.setItem(LS.location, JSON.stringify(state.location));
       $('#locationInput').value = state.location.label;
       showChosenLocation(state.location.label);
       toast('Got your location 📍');
