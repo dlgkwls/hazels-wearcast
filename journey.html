@@ -336,7 +336,7 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; line-height:
    portrait tablets keep the normal scrolling layout. */
 .slide-nav { display: none; }
 .deck { scroll-snap-type: y proximity; scroll-padding-top: var(--top-h, 64px); }
-.deck #hero, .deck main > section { scroll-snap-align: start; scroll-margin-top: var(--top-h, 64px); }
+.deck #hero, .deck main > section { scroll-snap-align: start; }
 .deck #hero { min-height: calc(100vh - var(--top-h, 64px)); }
 .deck main > section {
   height: calc(100vh - var(--top-h, 64px)); display: flex; flex-direction: column;
@@ -353,7 +353,7 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; line-height:
 .deck .ch-head .lead { grid-column: 2; grid-row: 1 / span 2; font-size: 15.5px; line-height: 1.6; align-self: center; }
 .deck .slides { flex: 1; min-height: 0; overflow: hidden; position: relative; }
 .deck .track { display: flex; height: 100%; transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
-.deck .slide { flex: 0 0 100%; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 4px 2px; }
+.deck .slide { flex: 0 0 100%; height: 100%; overflow-y: auto; padding: 4px 6px 4px 2px; }
 .deck .slide { display: flex; flex-direction: column; justify-content: safe center; }
 .deck .slide > * { flex: none; }
 .deck .slide > .beat { width: 100%; }
